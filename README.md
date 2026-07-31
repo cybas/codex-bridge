@@ -1,9 +1,37 @@
-# Codex MCP bridge
+# codex-bridge
 
-This bridge delegates project-scoped coding work to the local OpenAI Codex CLI
-(`codex`, bundled inside ChatGPT.app). It's the Codex-side counterpart to
-`claude-code-bridge` — together they let Claude Code and Codex hand tasks back
-and forth, each resuming its own persistent thread/session per workspace.
+An MCP server that lets Claude Code (or any MCP client) hand off coding tasks
+to the local OpenAI Codex CLI (`codex`, bundled inside ChatGPT.app), running in
+a specific project workspace. Each workspace gets its own persistent Codex
+thread that automatically resumes across calls.
+
+It's the Codex-side counterpart to [`cursor-agent-bridge`](https://github.com/cybas-commercial/cursor-agent-bridge)
+— together they let Claude Code, Cursor, and Codex hand tasks back and forth,
+each resuming its own persistent thread/session per workspace.
+
+## Setup
+
+```json
+{
+  "mcpServers": {
+    "codex-bridge": {
+      "command": "node",
+      "args": ["/path/to/codex-bridge/index.js"]
+    }
+  }
+}
+```
+
+Requires the `codex` CLI installed and on `PATH`.
+
+## Tools
+
+- **codex_delegate** — send a prompt + workspace path to Codex, resuming that
+  workspace's thread if one exists.
+- **codex_sessions** — list all workspaces with an active/remembered thread
+  and when they were last used.
+
+## How it works
 
 ## Sandbox and shell permission
 
