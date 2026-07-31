@@ -5,7 +5,7 @@ to the local OpenAI Codex CLI (`codex`, bundled inside ChatGPT.app), running in
 a specific project workspace. Each workspace gets its own persistent Codex
 thread that automatically resumes across calls.
 
-It's the Codex-side counterpart to [`cursor-agent-bridge`](https://github.com/cybas-commercial/cursor-agent-bridge)
+It's the Codex-side counterpart to [`cursor-agent-bridge`](https://github.com/cybas/cursor-agent-bridge)
 — together they let Claude Code, Cursor, and Codex hand tasks back and forth,
 each resuming its own persistent thread/session per workspace.
 
