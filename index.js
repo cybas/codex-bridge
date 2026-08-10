@@ -128,6 +128,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
               `Override the default ${DEFAULT_TIMEOUT_MS / 60000}-minute timeout for this call, in ` +
               `milliseconds, up to a hard cap of ${MAX_TIMEOUT_MS / 60000} minutes.`,
           },
+          model: {
+            type: "string",
+            description:
+              "Which model codex should use for this call (e.g. 'gpt-5.6-sol', 'o3', 'gpt-5-mini'). " +
+              "Omit to use the model configured in ~/.codex/config.toml.",
+          },
         },
         required: ["prompt", "workspace"],
       },
@@ -168,6 +174,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       allow_shell = false,
       shell_permission_confirmed = false,
       timeout_ms,
+      model,
     } = args ?? {};
     if (!prompt || !workspace) {
       throw new Error("Both 'prompt' and 'workspace' are required.");
@@ -197,6 +204,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       ? ["-s", "danger-full-access", "--dangerously-bypass-approvals-and-sandbox"]
       : ["-s", "workspace-write", "-c", "sandbox_workspace_write.network_access=false"];
 
+    const modelArgs = model ? ["-m", model] : [];
+
     let cliArgs;
     if (existing?.threadId) {
       cliArgs = [
@@ -204,6 +213,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         "--json",
         "--skip-git-repo-check",
         ...sandboxArgs,
+        ...modelArgs,
         "-o",
         outFile,
         "resume",
@@ -216,6 +226,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         "--json",
         "--skip-git-repo-check",
         ...sandboxArgs,
+        ...modelArgs,
         "-C",
         key,
         "-o",

@@ -31,6 +31,27 @@ Requires the `codex` CLI installed and on `PATH`.
 - **codex_sessions** — list all workspaces with an active/remembered thread
   and when they were last used.
 
+## Optional ChatGPT web task relay
+
+`relay-worker/` is a separate, authenticated Cloudflare queue for submitting
+tasks from ChatGPT web. `relay-agent.js` runs locally on the Mac, claims one
+queued task, invokes the local Codex CLI, and posts the result back. Codex can
+then use the existing local stdio Cursor MCP; the web relay never invokes
+Cursor directly and cannot grant shell, SSH, network, commit, push, or deploy
+capabilities.
+
+Run the local agent only after configuring the Worker secrets and URL:
+
+```sh
+CODEX_RELAY_URL=https://your-worker.example \
+CODEX_RELAY_AGENT_TOKEN='value-from-wrangler-secret' \
+node relay-agent.js
+```
+
+For the first smoke test, use `node relay-agent.js --once` and submit a
+read-only task. Keep `CODEX_RELAY_WORKSPACES` restricted to explicit absolute
+paths; do not use `/Users/vr` as a broad execution allowlist.
+
 ## How it works
 
 ## Sandbox and shell permission
