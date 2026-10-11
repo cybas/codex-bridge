@@ -8,10 +8,11 @@ function json(data, status = 200) {
   });
 }
 
-function token(req, name) {
+function token(req, expected) {
+  if (!expected) return false;
   const value = req.headers.get("authorization") || "";
   const [scheme, supplied] = value.split(" ");
-  return scheme?.toLowerCase() === "bearer" && supplied === name;
+  return scheme?.toLowerCase() === "bearer" && supplied === expected;
 }
 
 function safeTask(body, env) {
@@ -39,6 +40,13 @@ function conversationId(value) {
 
 async function readJson(req) { try { return await req.json(); } catch { throw new Error("invalid JSON"); } }
 
+function conversationReader(req, env) {
+  if (token(req, env.AGENT_TOKEN)) return "codex";
+  if (token(req, env.MARKET_TOKEN)) return "market";
+  if (token(req, env.WEB_TOKEN)) return "web";
+  return null;
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
@@ -55,15 +63,22 @@ export default {
         if (typeof body.text !== "string" || !body.text.trim() || body.text.length > MAX_PROMPT_BYTES) return json({ error: "text is required and must be <= 64KB" }, 400);
         return stub.fetch("https://queue/message", { method: "POST", body: JSON.stringify({ conversation_id: conversation, direction: "web_to_codex", text: body.text.trim(), reply_to: body.reply_to || null }) });
       }
+      if (req.method === "POST" && parts.length === 4 && parts[3] === "market") {
+        if (!token(req, env.MARKET_TOKEN)) return json({ error: "unauthorized" }, 401);
+        const body = await readJson(req);
+        if (typeof body.text !== "string" || !body.text.trim() || body.text.length > MAX_PROMPT_BYTES) return json({ error: "text is required and must be <= 64KB" }, 400);
+        return stub.fetch("https://queue/message", { method: "POST", body: JSON.stringify({ conversation_id: conversation, direction: "market_to_codex", text: body.text.trim(), reply_to: body.reply_to || null }) });
+      }
       if (req.method === "GET" && parts.length === 3) {
-        if (!token(req, env.WEB_TOKEN) && !token(req, env.AGENT_TOKEN)) return json({ error: "unauthorized" }, 401);
+        if (!conversationReader(req, env)) return json({ error: "unauthorized" }, 401);
         return stub.fetch(`https://queue/messages?after=${encodeURIComponent(url.searchParams.get("after") || "0")}`);
       }
       if (req.method === "POST" && parts.length === 4 && parts[3] === "replies") {
         if (!token(req, env.AGENT_TOKEN)) return json({ error: "unauthorized" }, 401);
         const body = await readJson(req);
         if (typeof body.text !== "string" || !body.text.trim() || body.text.length > MAX_PROMPT_BYTES) return json({ error: "text is required and must be <= 64KB" }, 400);
-        return stub.fetch("https://queue/message", { method: "POST", body: JSON.stringify({ conversation_id: conversation, direction: "codex_to_web", text: body.text.trim(), reply_to: body.reply_to || null }) });
+        const target = body.target === "market" ? "market" : "web";
+        return stub.fetch("https://queue/message", { method: "POST", body: JSON.stringify({ conversation_id: conversation, direction: target === "market" ? "codex_to_market" : "codex_to_web", text: body.text.trim(), reply_to: body.reply_to || null }) });
       }
     }
 
@@ -74,10 +89,11 @@ export default {
     }
 
     if (parts[1] === "messages" && parts.length === 3 && req.method === "POST" && parts[2] === "ack") {
-      if (!token(req, env.AGENT_TOKEN) && !token(req, env.WEB_TOKEN)) return json({ error: "unauthorized" }, 401);
+      const by = conversationReader(req, env);
+      if (!by) return json({ error: "unauthorized" }, 401);
       const body = await readJson(req); const conversation = conversationId(body.conversation_id);
       const stub = env.TASK_QUEUE.get(env.TASK_QUEUE.idFromName(`conversation:${conversation}`));
-      return stub.fetch("https://queue/ack", { method: "POST", body: JSON.stringify({ message_id: body.message_id, by: token(req, env.AGENT_TOKEN) ? "codex" : "web" }) });
+      return stub.fetch("https://queue/ack", { method: "POST", body: JSON.stringify({ message_id: body.message_id, by }) });
     }
 
     // Task routes continue below; the conversation routes above are additive.
