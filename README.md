@@ -52,6 +52,36 @@ For the first smoke test, use `node relay-agent.js --once` and submit a
 read-only task. Keep `CODEX_RELAY_WORKSPACES` restricted to explicit absolute
 paths; do not use `/Users/vr` as a broad execution allowlist.
 
+## Market wake path
+
+The relay also supports a narrow S8-to-Codex market channel. Configure a
+separate Cloudflare Worker secret named `MARKET_TOKEN`. A market producer posts
+to:
+
+```text
+POST /v1/conversations/<id>/market
+```
+
+using `Authorization: Bearer <MARKET_TOKEN>`. The local `relay-agent.js`
+processes `market_to_codex` messages in a read-only Codex sandbox, keeps a
+persistent Codex thread per market conversation, and returns
+`codex_to_market` replies. The market token can read that conversation and ack
+its replies but cannot claim tasks, post agent replies, or request privileged
+shell/network/SSH capabilities.
+
+Useful Mac settings:
+
+```bash
+CODEX_RELAY_CONVERSATION_ID=s8-market
+CODEX_RELAY_DEFAULT_WORKSPACE=/Users/vr/trader-a2
+CODEX_RELAY_MARKET_TIMEOUT_MS=20000
+# Optional: CODEX_RELAY_MARKET_MODEL=<a Codex model available to your account>
+```
+
+The market path is intentionally reasoning-only. The producer supplies the
+point-in-time market payload; Codex is instructed not to use tools, fetch
+outside data, or edit files for those messages.
+
 ## How it works
 
 ## Sandbox and shell permission
@@ -75,8 +105,10 @@ enabled, the bridge runs Codex with `-s danger-full-access
 
 ## Timeout
 
-Each call defaults to a 10-minute timeout. Any calling AI can raise this per
-call via the `timeout_ms` parameter, up to a hard cap of 60 minutes.
+Each ordinary bridge call defaults to a 10-minute timeout. Any calling AI can
+raise this per call via the `timeout_ms` parameter, up to a hard cap of 60
+minutes. Market relay calls default to 20 seconds so an unavailable or slow
+Codex turn fails closed before the next 1-minute market cycle.
 
 Clients that already loaded the MCP server must restart or reconnect it to
 see schema or implementation changes.
