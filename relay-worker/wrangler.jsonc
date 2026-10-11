@@ -2,6 +2,7 @@
   "name": "codex-task-relay",
   "main": "src/index.js",
   "compatibility_date": "2026-08-09",
+  "account_id": "60b522cc74a76de581b7b76b7ca37423",
   "durable_objects": { "bindings": [{ "name": "TASK_QUEUE", "class_name": "TaskQueue" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TaskQueue"] }],
   "vars": { "ALLOWED_WORKSPACES": "/Users/vr/trader-a2,/Users/vr/symbol_intake,/Users/vr/ta2-dhan-candle,/Users/vr/openalgo" }

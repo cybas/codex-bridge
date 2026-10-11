@@ -102,9 +102,8 @@ async function runConversation(message) {
           action: "WAIT",
           option_symbol: null,
           option_exchange: null,
-          lots: 0,
-          stop_price: null,
-          target_price: null,
+          stop_reference: null,
+          target_reference: null,
           confidence: 0,
           rationale: "Codex market reasoning unavailable or timed out",
           valid_for_seconds: 10,
@@ -115,13 +114,41 @@ async function runConversation(message) {
   }
 }
 
+// ponytail: while Codex is busy, only the newest market_to_codex message is
+// worth reasoning on; older pending market ticks are ack'd and discarded.
+function coalesceInbox(messages) {
+  const list = messages || [];
+  let latestMarket = null;
+  for (const message of list) {
+    if (message.direction === "market_to_codex") latestMarket = message;
+  }
+  const out = [];
+  for (const message of list) {
+    if (message.direction === "market_to_codex") {
+      if (latestMarket && message.message_id === latestMarket.message_id) out.push(message);
+      else out.push({ ...message, _coalescedAway: true });
+    } else if (["web_to_codex"].includes(message.direction)) {
+      out.push(message);
+    } else {
+      out.push({ ...message, _skip: true });
+    }
+  }
+  return out;
+}
+
 const waitMs = Number(process.env.CODEX_RELAY_POLL_MS || 1000);
 const once = process.argv.includes("--once");
 let cursor = Number(process.env.CODEX_RELAY_MESSAGE_CURSOR || 0);
 while (true) {
   if (process.env.CODEX_RELAY_CONVERSATION_ID) {
     const inbox = await api(`/v1/inbox?conversation_id=${encodeURIComponent(process.env.CODEX_RELAY_CONVERSATION_ID)}&after=${cursor}`, { method: "GET" });
-    for (const message of inbox.messages || []) {
+    for (const message of coalesceInbox(inbox.messages)) {
+      if (message._skip) { cursor = Math.max(cursor, message.sequence); continue; }
+      if (message._coalescedAway) {
+        await api("/v1/messages/ack", { method: "POST", body: JSON.stringify({ conversation_id: message.conversation_id, message_id: message.message_id }) });
+        cursor = Math.max(cursor, message.sequence);
+        continue;
+      }
       if (!["web_to_codex", "market_to_codex"].includes(message.direction)) { cursor = Math.max(cursor, message.sequence); continue; }
       const result = await runConversation(message);
       const target = message.direction === "market_to_codex" ? "market" : "web";

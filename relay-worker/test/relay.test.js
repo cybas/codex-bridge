@@ -40,6 +40,18 @@ test("conversation messages have ordered cursors and acknowledgements", async ()
   assert.equal((await empty.json()).messages.length, 0);
 });
 
+test("pending market ticks coalesce to the newest message", async () => {
+  const queue = new TaskQueue(state());
+  const first = await (await queue.fetch(new Request("https://queue/message", { method: "POST", body: JSON.stringify({ conversation_id: "s8-market", direction: "market_to_codex", text: "old" }) }))).json();
+  const second = await (await queue.fetch(new Request("https://queue/message", { method: "POST", body: JSON.stringify({ conversation_id: "s8-market", direction: "market_to_codex", text: "new" }) }))).json();
+  assert.equal(second.sequence, 2);
+  const inbox = await (await queue.fetch(new Request("https://queue/inbox?after=0"))).json();
+  const pending = inbox.messages.filter(m => m.direction === "market_to_codex" && !(m.acknowledged_by || []).includes("codex"));
+  assert.equal(pending.length, 1);
+  assert.equal(pending[0].message_id, second.message_id);
+  assert.equal(first.message_id !== second.message_id, true);
+});
+
 test("market token can submit and read only the market conversation path", async () => {
   const e = env();
   const submitted = await worker.fetch(new Request("https://relay/v1/conversations/s8-market/market", {

@@ -1,5 +1,8 @@
 const MAX_PROMPT_BYTES = 64 * 1024;
 const MAX_TTL_SECONDS = 24 * 60 * 60;
+// ponytail: Durable Object event log is append-only; cap growth. Upgrade:
+// per-direction TTL / compaction keyed by acknowledgement.
+const MAX_EVENTS = 200;
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -138,8 +141,21 @@ export class TaskQueue {
     const events = (await this.state.storage.get("events")) || [];
     if (req.method === "POST" && url.pathname === "/message") {
       const body = await req.json();
-      const event = { message_id: crypto.randomUUID(), sequence: events.length + 1, ...body, created_at: new Date().toISOString(), acknowledged_by: [] };
-      events.push(event); await this.state.storage.put("events", events); return json(event, 202);
+      // Coalesce pending market ticks: keep only the newest unacked market_to_codex.
+      if (body.direction === "market_to_codex") {
+        for (let i = events.length - 1; i >= 0; i -= 1) {
+          const existing = events[i];
+          if (existing.direction === "market_to_codex" && !(existing.acknowledged_by || []).includes("codex")) {
+            existing.acknowledged_by = [...(existing.acknowledged_by || []), "codex"];
+            existing.coalesced_away = true;
+          }
+        }
+      }
+      const nextSequence = events.reduce((max, item) => Math.max(max, Number(item.sequence) || 0), 0) + 1;
+      const event = { message_id: crypto.randomUUID(), sequence: nextSequence, ...body, created_at: new Date().toISOString(), acknowledged_by: [] };
+      events.push(event);
+      while (events.length > MAX_EVENTS) events.shift();
+      await this.state.storage.put("events", events); return json(event, 202);
     }
     if ((req.method === "GET" && (url.pathname === "/messages" || url.pathname === "/inbox"))) {
       const after = Number(url.searchParams.get("after") || 0);

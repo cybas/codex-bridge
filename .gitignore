@@ -1,3 +1,6 @@
 node_modules/
 sessions.json
+relay-sessions.json
 .env
+relay-agent.local.env
+*.local.env

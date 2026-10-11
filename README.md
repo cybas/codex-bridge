@@ -80,7 +80,9 @@ CODEX_RELAY_MARKET_TIMEOUT_MS=20000
 
 The market path is intentionally reasoning-only. The producer supplies the
 point-in-time market payload; Codex is instructed not to use tools, fetch
-outside data, or edit files for those messages.
+outside data, or edit files for those messages. While a Codex market turn is
+busy, newer `market_to_codex` messages supersede older pending ones (worker
+marks stale ticks coalesced; the Mac agent acks and skips them).
 
 ## How it works
 
