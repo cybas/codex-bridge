@@ -9,8 +9,10 @@ Conversation endpoints:
 
 ```text
 POST /v1/conversations/:conversation_id/messages   Web → Codex
+POST /v1/conversations/:conversation_id/market     S8 market producer → Codex
+GET  /v1/conversations/:conversation_id            Read conversation events
 GET  /v1/inbox?conversation_id=...&after=...       Codex receives messages
-POST /v1/conversations/:conversation_id/replies    Codex → Web
+POST /v1/conversations/:conversation_id/replies    Codex → Web or market producer
 POST /v1/messages/ack                              Acknowledge delivery
 ```
 
@@ -22,11 +24,18 @@ Before deployment, set secrets (never put them in `wrangler.jsonc`):
 ```sh
 wrangler secret put WEB_TOKEN
 wrangler secret put AGENT_TOKEN
+wrangler secret put MARKET_TOKEN
 wrangler deploy
 ```
 
+`MARKET_TOKEN` is intentionally separate from both the web and local-agent
+credentials. It can submit `market_to_codex` messages, read the same
+conversation and acknowledge `codex_to_market` replies, but it cannot claim
+queued engineering tasks or post Codex replies itself.
+
 Put Cloudflare Access in front of the Worker as an additional identity layer.
-The local agent should use a separate `AGENT_TOKEN`; rotate both independently.
+The local agent should use a separate `AGENT_TOKEN`; rotate all three secrets
+independently.
 
 For bidirectional mode, run the local agent with
 `CODEX_RELAY_CONVERSATION_ID` and `CODEX_RELAY_DEFAULT_WORKSPACE` set. The
