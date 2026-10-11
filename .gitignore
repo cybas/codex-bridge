@@ -4,3 +4,4 @@ relay-sessions.json
 .env
 relay-agent.local.env
 *.local.env
+logs/
