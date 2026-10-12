@@ -5,8 +5,8 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "check": "node --check index.js && node --check relay-agent.js && node --check relay-worker/src/index.js",
-    "test:relay": "node --test relay-worker/test/*.test.js"
+    "check": "node --check index.js && node --check relay-agent.js && node --check market-relay-server.js && node --check relay-worker/src/index.js",
+    "test:relay": "node --test relay-worker/test/*.test.js test/*.test.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.1"

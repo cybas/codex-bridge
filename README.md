@@ -84,6 +84,16 @@ outside data, or edit files for those messages. While a Codex market turn is
 busy, newer `market_to_codex` messages supersede older pending ones (worker
 marks stale ticks coalesced; the Mac agent acks and skips them).
 
+
+## Tailscale market relay (preferred for S8)
+
+`market-relay-server.js` is a private HTTP service bound to a Tailscale address.
+S8 posts `POST /v1/market/analyze` with `Authorization: Bearer <MARKET_TOKEN>`.
+The server serializes Codex turns (read-only sandbox), coalesces stale requests,
+and returns structured JSON. Configure via `relay-agent.local.env` and the
+`com.vr.codex-market-relay` LaunchAgent. Cloudflare Worker code remains in-tree
+but is not required for this path.
+
 ## How it works
 
 ## Sandbox and shell permission

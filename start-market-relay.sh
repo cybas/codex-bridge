@@ -1,5 +1,5 @@
 #!/bin/bash
-# LaunchAgent entrypoint for the S8 market Codex relay agent.
+# LaunchAgent entrypoint: Tailscale-bound Codex market relay (no Cloudflare).
 set -euo pipefail
 export PATH="/Users/vr/.local/bin:/opt/homebrew/bin:/opt/homebrew/opt/node@20/bin:/usr/bin:/bin"
 ENV_FILE="/Users/vr/.claude/mcp-servers/codex-bridge/relay-agent.local.env"
@@ -11,13 +11,13 @@ set -a
 # shellcheck disable=SC1090
 source "$ENV_FILE"
 set +a
-: "${CODEX_RELAY_URL:?}"
-: "${CODEX_RELAY_AGENT_TOKEN:?}"
+: "${CODEX_RELAY_MARKET_TOKEN:?}"
+export CODEX_MARKET_RELAY_BIND="${CODEX_MARKET_RELAY_BIND:-100.113.193.82}"
+export CODEX_MARKET_RELAY_PORT="${CODEX_MARKET_RELAY_PORT:-8788}"
 export CODEX_RELAY_CONVERSATION_ID="${CODEX_RELAY_CONVERSATION_ID:-s8-market}"
 export CODEX_RELAY_DEFAULT_WORKSPACE="${CODEX_RELAY_DEFAULT_WORKSPACE:-/Users/vr/trader-a2}"
 export CODEX_RELAY_WORKSPACES="${CODEX_RELAY_WORKSPACES:-/Users/vr/trader-a2,/Users/vr/symbol_intake,/Users/vr/ta2-dhan-candle,/Users/vr/openalgo}"
-export CODEX_RELAY_MARKET_TIMEOUT_MS="${CODEX_RELAY_MARKET_TIMEOUT_MS:-20000}"
-export CODEX_RELAY_POLL_MS="${CODEX_RELAY_POLL_MS:-500}"
+export CODEX_RELAY_MARKET_TIMEOUT_MS="${CODEX_RELAY_MARKET_TIMEOUT_MS:-25000}"
 export CODEX_AGENT_PATH="${CODEX_AGENT_PATH:-/Users/vr/.local/bin/codex}"
 cd /Users/vr/.claude/mcp-servers/codex-bridge
-exec /opt/homebrew/bin/node relay-agent.js
+exec /opt/homebrew/bin/node market-relay-server.js
