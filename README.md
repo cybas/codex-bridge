@@ -87,7 +87,7 @@ marks stale ticks coalesced; the Mac agent acks and skips them).
 
 ## Tailscale market relay (preferred for S8)
 
-`market-relay-server.js` is a private HTTP service bound to a Tailscale address.
+``market_relay_server.py` is a private HTTP service bound to a Tailscale address.
 S8 posts `POST /v1/market/analyze` with `Authorization: Bearer <MARKET_TOKEN>`.
 The server serializes Codex turns (read-only sandbox), coalesces stale requests,
 and returns structured JSON. Configure via `relay-agent.local.env` and the

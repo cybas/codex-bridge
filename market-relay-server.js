@@ -130,13 +130,21 @@ async function runCodexMarket({ prompt, conversationId }) {
   const sandboxArgs = ["-s", "read-only"];
   const modelArgs = process.env.CODEX_RELAY_MARKET_MODEL ? ["-m", process.env.CODEX_RELAY_MARKET_MODEL] : [];
   let args;
+  // --ignore-user-config avoids MCP servers in ~/.codex/config.toml hanging the
+  // market path (Cloudflare MCP OAuth stalls). Auth still uses CODEX_HOME.
+  const baseArgs = ["exec", "--json", "--skip-git-repo-check", "--ignore-user-config", ...sandboxArgs, ...modelArgs];
   if (existing?.threadId) {
-    args = ["exec", "--json", "--skip-git-repo-check", ...sandboxArgs, ...modelArgs, "-o", outFile, "resume", existing.threadId, prompt];
+    args = [...baseArgs, "-o", outFile, "resume", existing.threadId, prompt];
   } else {
-    args = ["exec", "--json", "--skip-git-repo-check", ...sandboxArgs, ...modelArgs, "-C", workspace, "-o", outFile, prompt];
+    args = [...baseArgs, "-C", workspace, "-o", outFile, prompt];
   }
   try {
-    const { stdout, stderr } = await exec(codexBin, args, { timeout: timeoutMs, maxBuffer: 20 * 1024 * 1024 });
+    // stdin must be ignored; otherwise Codex waits for more prompt input forever.
+    const { stdout, stderr } = await exec(codexBin, args, {
+      timeout: timeoutMs,
+      maxBuffer: 20 * 1024 * 1024,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
     const raw = stdout || stderr || "";
     const threadId = extractThreadId(raw) || existing?.threadId;
     if (threadId) {
