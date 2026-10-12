@@ -86,6 +86,10 @@ marks stale ticks coalesced; the Mac agent acks and skips them).
 
 
 ## Tailscale market relay (preferred for S8)
+### Deployment status (2026-10-12)
+
+Mac Tailscale market relay is deployed via LaunchAgent `com.vr.codex-market-relay` binding `100.113.193.82:8788`. Cloudflare Worker is **not** required for the S8 market loop.
+
 
 ``market_relay_server.py` is a private HTTP service bound to a Tailscale address.
 S8 posts `POST /v1/market/analyze` with `Authorization: Bearer <MARKET_TOKEN>`.
